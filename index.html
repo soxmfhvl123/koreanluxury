@@ -145,6 +145,25 @@
     }
     
     #root { min-height: 100vh; }
+
+    .reel-container {
+      width: 100%;
+      height: 75vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      background: var(--background);
+      margin-bottom: 4rem;
+    }
+
+    .reel-image {
+      position: absolute;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
   </style>
 
   <!-- React & Framer Motion from CDN -->
@@ -170,6 +189,7 @@
       { id: '06', name: '06 PAPER', desc: '한지 / 빛의 투과, 종이의 질감' },
       { id: '07', name: '07 HUMAN', desc: '사람 / 손길, 태도, 배려' },
       { id: '08', name: '08 NATURE', desc: '자연 / 차경, 정원, 빛과 그림자' },
+      { id: '09', name: '09 REEL', desc: '자동 재생 / 빛과 여백의 연속' },
     ];
 
     const imageFiles = [
@@ -447,6 +467,36 @@
 
     const IMAGES = generateImageData();
 
+    const ReelView = ({ images }) => {
+      const [currentIndex, setCurrentIndex] = useState(0);
+
+      useEffect(() => {
+        if (images.length === 0) return;
+        const timer = setInterval(() => {
+          setCurrentIndex(prev => (prev + 1) % images.length);
+        }, 1200);
+        return () => clearInterval(timer);
+      }, [images]);
+
+      if (images.length === 0) return null;
+
+      return (
+        <div className="reel-container">
+          <AnimatePresence>
+            <motion.img
+              key={currentIndex}
+              src={images[currentIndex].src}
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.02 }}
+              transition={{ duration: 0.8, ease: "easeInOut" }}
+              className="reel-image"
+            />
+          </AnimatePresence>
+        </div>
+      );
+    };
+
     function App() {
       const [activeFilter, setActiveFilter] = useState('ALL');
       const [selectedImage, setSelectedImage] = useState(null);
@@ -493,6 +543,9 @@
             ))}
           </motion.nav>
 
+          {activeFilter === '09' ? (
+            <ReelView images={IMAGES} />
+          ) : (
           <motion.div layout className="grid-gallery">
             <AnimatePresence>
               {filteredImages.map((img) => (
@@ -511,6 +564,7 @@
               ))}
             </AnimatePresence>
           </motion.div>
+          )}
 
           <AnimatePresence>
             {selectedImage && (
