@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KOREAN LUXURY | Photo Archive</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --background: #050505;
+      --foreground: #f4f4f0;
+      --accent: #b0a593;
+      --border: #222222;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--background);
+      color: var(--foreground);
+      font-family: 'Nanum Myeongjo', serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .sans { font-family: 'Inter', sans-serif; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--background); }
+    ::-webkit-scrollbar-thumb { background: #444; }
+
+    .container {
+      max-width: 1800px;
+      margin: 0 auto;
+      padding: 0 5vw;
+    }
+
+    .header { padding: 8rem 0 4rem; }
+
+    .title {
+      font-size: clamp(2.5rem, 5vw, 4.5rem);
+      font-weight: 300;
+      margin-bottom: 2rem;
+      letter-spacing: 0.08em;
+    }
+
+    .subtitle {
+      font-size: clamp(1rem, 1.5vw, 1.2rem);
+      color: var(--accent);
+      max-width: 700px;
+      line-height: 1.8;
+      word-break: keep-all;
+      font-weight: 400;
+    }
+
+    .filter-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem;
+      margin-bottom: 4rem;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 1.5rem 0;
+    }
+
+    .filter-btn {
+      background: none;
+      border: none;
+      color: #666;
+      font-size: 0.85rem;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: all 0.4s ease;
+      padding: 0.6rem 1.2rem;
+      border-radius: 2rem;
+    }
+
+    .filter-btn:hover { color: var(--foreground); }
+
+    .filter-btn.active {
+      color: var(--background);
+      background-color: var(--foreground);
+    }
+
+    .grid-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      padding-bottom: 6rem;
+    }
+
+    @media (max-width: 768px) {
+      .grid-gallery {
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 1rem;
+      }
+      .header { padding: 5rem 0 3rem; }
+      .filter-nav { gap: 0.5rem; padding: 1rem 0; }
+      .filter-btn { font-size: 0.75rem; padding: 0.4rem 0.8rem; }
+    }
+
+    .image-card {
+      position: relative;
+      overflow: hidden;
+      aspect-ratio: 4/5;
+      cursor: zoom-in;
+      background-color: #111;
+      border-radius: 2px;
+      will-change: transform;
+    }
+
+    .image-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .image-card:hover img { transform: scale(1.05); }
+
+    .fullscreen-overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: rgba(5, 5, 5, 0.98);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem;
+      cursor: zoom-out;
+    }
+
+    .fullscreen-overlay img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+    
+    #root { min-height: 100vh; }
+  </style>
+
+  <!-- React & Framer Motion from CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const { motion, AnimatePresence } = window.Motion;
+
+    const CATEGORIES = [
+      { id: 'ALL', name: 'ALL' },
+      { id: '01', name: '01 ARCHITECTURE', desc: '건축 / 공간의 구조' },
+      { id: '02', name: '02 CERAMIC', desc: '그릇 / 백자, 청자, 분청' },
+      { id: '03', name: '03 WOOD', desc: '나무 / 옻칠, 가구, 목공예' },
+      { id: '04', name: '04 STONE', desc: '돌 / 기와, 전돌, 석재' },
+      { id: '05', name: '05 TEXTILE', desc: '직물 / 모시, 실크, 조각보' },
+      { id: '06', name: '06 PAPER', desc: '한지 / 빛의 투과, 종이의 질감' },
+      { id: '07', name: '07 HUMAN', desc: '사람 / 손길, 태도, 배려' },
+      { id: '08', name: '08 NATURE', desc: '자연 / 차경, 정원, 빛과 그림자' },
+    ];
+
+    const imageFiles = [
+      "djinc_A_close-up_of_a_modern_luxury_resort_built_with_massive_33d78be5-2d76-4b99-a4e5-3c988b3c6753_0.png",
+      "djinc_A_close-up_of_a_modern_luxury_resort_built_with_massive_33d78be5-2d76-4b99-a4e5-3c988b3c6753_2.png",
+      "djinc_A_dynamic_editorial_fashion_photograph_of_a_model_in_a__9baa451d-f263-48b3-9371-2b9a6be814a5_0.png",
+      "djinc_A_dynamic_editorial_fashion_photograph_of_a_model_in_a__9baa451d-f263-48b3-9371-2b9a6be814a5_2.png",
+      "djinc_A_full_body_shot_of_a_person_walking_slowly_through_a_m_9e716486-7d0f-44b2-ade1-121d0c4be352_2.png",
+      "djinc_A_full_body_shot_of_a_person_walking_slowly_through_a_m_9e716486-7d0f-44b2-ade1-121d0c4be352_3.png",
+      "djinc_A_large-scale_textile_installation_hanging_in_the_atriu_9de98193-6a0a-47f3-8d60-1ff8746d6614_1.png",
+      "djinc_A_long_narrow_minimalist_corridor_with_dark_timber_floo_d2fb6ef3-2881-4d35-acd2-df076868fffb_0.png",
+      "djinc_A_long_narrow_minimalist_corridor_with_dark_timber_floo_d2fb6ef3-2881-4d35-acd2-df076868fffb_3.png",
+      "djinc_A_minimalist_arrangement_of_contemporary_Korean_bronzew_89ee8799-1aef-4f1a-820f-afcbe1d77ba0_0.png",
+      "djinc_A_minimalist_arrangement_of_contemporary_Korean_bronzew_89ee8799-1aef-4f1a-820f-afcbe1d77ba0_1.png",
+      "djinc_A_minimalist_arrangement_of_contemporary_Korean_bronzew_89ee8799-1aef-4f1a-820f-afcbe1d77ba0_2.png",
+      "djinc_A_minimalist_entrance_courtyard_with_a_low_stone_wall_a_07eeb8c1-e810-4f3e-aae3-8f0f67ea08f7_0.png",
+      "djinc_A_minimalist_white_porcelain_tea_cup_Baekja_matte_ivory_f11515d7-98bb-4740-98cd-0d7f866d34bd_3.png",
+      "djinc_A_modern_granite_water_basin_a_single_drop_creating_rip_cfb25c5d-1c18-4ce4-a51e-c1269c18aae3_3.png",
+      "djinc_A_modern_interpretation_of_a_Soban_table_matte_black_st_02f0a6d5-37eb-4c6f-9e71-55d84f6b7a9a_3.png",
+      "djinc_A_modern_textile_artwork_inspired_by_Pojagi_semi-transp_69360ea1-dfbf-40db-b452-b540078da99d_0.png",
+      "djinc_A_modern_textile_artwork_inspired_by_Pojagi_semi-transp_69360ea1-dfbf-40db-b452-b540078da99d_1.png",
+      "djinc_A_modern_textile_artwork_inspired_by_Pojagi_semi-transp_69360ea1-dfbf-40db-b452-b540078da99d_2.png",
+      "djinc_A_modern_textile_artwork_inspired_by_Pojagi_semi-transp_69360ea1-dfbf-40db-b452-b540078da99d_3.png",
+      "djinc_A_sophisticated_table_setting_featuring_contemporary_Ko_7ad142b1-37e9-4adf-97d0-f41cf3dd1aec_1.png",
+      "djinc_A_sophisticated_table_setting_featuring_contemporary_Ko_7ad142b1-37e9-4adf-97d0-f41cf3dd1aec_2.png",
+      "djinc_A_steady_stream_of_tea_being_poured_into_a_minimalist_c_3e9cdb97-6b1e-42fa-90cf-c4277812e863_2.png",
+      "djinc_A_subtle_side_profile_of_a_host_standing_by_a_monolithi_dba0fb15-48f7-4259-a4c4-e4cbe2fc4fca_2.png",
+      "djinc_A_wide_minimalist_wall_covered_in_textured_Hanji_paper__27ac6108-eda4-41fb-9675-b1d76add89aa_1.png",
+      "djinc_Abstract_close-up_of_a_high-end_lighting_installation_i_f0ff1c14-bd37-4f89-a938-baf7e3510006_2.png",
+      "djinc_Abstract_close-up_of_layered_Hanji_paper_soft_diffused__74185de1-8a64-4f8c-b2c0-c0283a1615e2_0.png",
+      "djinc_Abstract_close-up_of_layered_Hanji_paper_soft_diffused__74185de1-8a64-4f8c-b2c0-c0283a1615e2_1.png",
+      "djinc_Abstract_close-up_of_layered_Hanji_paper_soft_diffused__74185de1-8a64-4f8c-b2c0-c0283a1615e2_2.png",
+      "djinc_Abstract_close-up_of_layered_Hanji_paper_soft_diffused__74185de1-8a64-4f8c-b2c0-c0283a1615e2_3.png",
+      "djinc_Close-up_of_a_contemporary_furniture_piece_made_with_de_6f108632-00a0-49a8-95b3-1b38906b4f9a_0.png",
+      "djinc_Close-up_of_a_contemporary_furniture_piece_made_with_de_6f108632-00a0-49a8-95b3-1b38906b4f9a_1.png",
+      "djinc_Close-up_of_a_contemporary_furniture_piece_made_with_de_6f108632-00a0-49a8-95b3-1b38906b4f9a_2.png",
+      "djinc_Close-up_of_a_contemporary_furniture_piece_made_with_de_6f108632-00a0-49a8-95b3-1b38906b4f9a_3.png",
+      "djinc_Close-up_of_layered_white_ramie_fabric_translucent_text_19761539-d7fd-40fe-bf9b-11cc6c1e6e7e_0.png",
+      "djinc_Close-up_of_layered_white_ramie_fabric_translucent_text_19761539-d7fd-40fe-bf9b-11cc6c1e6e7e_1.png",
+      "djinc_Close-up_of_layered_white_ramie_fabric_translucent_text_19761539-d7fd-40fe-bf9b-11cc6c1e6e7e_2.png",
+      "djinc_Close-up_of_layered_white_ramie_fabric_translucent_text_19761539-d7fd-40fe-bf9b-11cc6c1e6e7e_3.png",
+      "djinc_Close-up_of_traditional_Korean_wood_joinery_on_a_modern_66250b5e-e42c-4d01-8164-f1c0303ae07f_0.png",
+      "djinc_Close-up_of_traditional_Korean_wood_joinery_on_a_modern_66250b5e-e42c-4d01-8164-f1c0303ae07f_2.png",
+      "djinc_Close-up_of_traditional_Korean_wood_joinery_on_a_modern_66250b5e-e42c-4d01-8164-f1c0303ae07f_3.png",
+      "djinc_Contemporary_minimalist_architecture_inspired_by_Hanok__3c9f8de6-47be-42db-93da-4dc9d39c4cc5_0.png",
+      "djinc_Contemporary_minimalist_architecture_inspired_by_Hanok__3c9f8de6-47be-42db-93da-4dc9d39c4cc5_3.png",
+      "djinc_Contemporary_small_wooden_table_geometric_black_steel_l_7820b9aa-0526-4cb5-8af3-46d51823dbc8_3.png",
+      "djinc_Editorial_fashion_photography_full_body_shot_of_a_model_72aa02ce-13cd-4b53-aec5-e1acdb2b0abf_2.png",
+      "djinc_Extreme_close-up_of_a_minimalist_coffee_table_finished__32e44a20-916e-4ed2-bfc0-431202209233_0.png",
+      "djinc_Extreme_close-up_of_a_minimalist_coffee_table_finished__32e44a20-916e-4ed2-bfc0-431202209233_2.png",
+      "djinc_Fine_white_ramie_fabric_hanging_from_a_ceiling_architec_68b44c14-2c39-4c02-9687-171c658c4548_0.png",
+      "djinc_Fine_white_ramie_fabric_hanging_from_a_ceiling_architec_68b44c14-2c39-4c02-9687-171c658c4548_1.png",
+      "djinc_Fine_white_ramie_fabric_hanging_from_a_ceiling_architec_68b44c14-2c39-4c02-9687-171c658c4548_2.png",
+      "djinc_Fine_white_ramie_fabric_hanging_from_a_ceiling_architec_68b44c14-2c39-4c02-9687-171c658c4548_3.png",
+      "djinc_Layered_white_ramie_Mosi_fabric_hanging_in_a_modern_gal_7ee23939-c6a6-4e58-b873-424d0300a249_0.png",
+      "djinc_Macro_detail_of_a_minimalist_walnut_chair_traditional_K_a1074393-b5e9-45f1-a2ba-4f81174dea68_0.png",
+      "djinc_Macro_detail_of_traditional_Korean_wooden_joinery_no_na_62bbb251-9962-4639-97a3-385e1d0732ab_0.png",
+      "djinc_Macro_detail_of_traditional_Korean_wooden_joinery_no_na_62bbb251-9962-4639-97a3-385e1d0732ab_1.png",
+      "djinc_Macro_photography_of_a_handcrafted_white_porcelain_tea__a1811c1f-3d78-4428-90a3-722be6350dbd_2.png",
+      "djinc_Macro_photography_of_a_pair_of_hands_in_a_respectful_ge_b589215b-832f-4ba1-a57d-079ac664e033_3.png",
+      "djinc_Macro_photography_of_handcrafted_Korean_Hanji_paper_vis_5a2ebe36-2e3c-4060-9d9b-6e6eacc504b8_0.png",
+      "djinc_Macro_photography_of_handcrafted_Korean_Hanji_paper_vis_5a2ebe36-2e3c-4060-9d9b-6e6eacc504b8_1.png",
+      "djinc_Macro_photography_of_handcrafted_Korean_Hanji_paper_vis_5a2ebe36-2e3c-4060-9d9b-6e6eacc504b8_2.png",
+      "djinc_Minimalist_entrance_nook_a_small_stone_pedestal_holding_73c59142-c04f-40a2-8c15-ca52209dd9fe_0.png",
+      "djinc_Minimalist_tea_set_on_a_raw_stone_plinth_thin_stream_of_84d36333-283c-4d0c-b2bb-891df2fa6e33_3.png",
+      "djinc_Modern_forged_bronze_Yugi_bowl_matte_gold_finish_placed_87783513-a0df-4beb-a13e-6767bb8bd979_3.png",
+      "djinc_Modern_luxury_suite_wide_horizontal_window_framing_a_si_3a5c5c97-16ae-44b6-bac4-68f1de62119d_1.png",
+      "djinc_Modern_luxury_suite_wide_horizontal_window_framing_a_si_3a5c5c97-16ae-44b6-bac4-68f1de62119d_2.png",
+      "djinc_Modern_luxury_suite_wide_horizontal_window_framing_a_si_3a5c5c97-16ae-44b6-bac4-68f1de62119d_3.png",
+      "djinc_Polished_warm_brass_Yugi_plate_on_a_raw_dark_volcanic_s_bdff8a3c-c1fb-4235-ad78-10ed54eda7a3_0.png",
+      "djinc_Polished_warm_brass_Yugi_plate_on_a_raw_dark_volcanic_s_bdff8a3c-c1fb-4235-ad78-10ed54eda7a3_1.png",
+      "djinc_Polished_warm_brass_Yugi_plate_on_a_raw_dark_volcanic_s_bdff8a3c-c1fb-4235-ad78-10ed54eda7a3_2.png",
+      "djinc_Polished_warm_brass_Yugi_plate_on_a_raw_dark_volcanic_s_bdff8a3c-c1fb-4235-ad78-10ed54eda7a3_3.png",
+      "djinc_Sunlight_filtering_through_vertical_wooden_slats_shadow_d359ffd6-a6d7-4dfa-9d3b-d6d51408ba59_0.png",
+      "djinc_Sunlight_filtering_through_vertical_wooden_slats_shadow_d359ffd6-a6d7-4dfa-9d3b-d6d51408ba59_1.png",
+      "djinc_Sunlight_filtering_through_vertical_wooden_slats_shadow_d359ffd6-a6d7-4dfa-9d3b-d6d51408ba59_3.png",
+      "djinc_Two_people_sitting_across_a_minimalist_stone_table_a_si_7c20932a-6048-4aae-b0e3-e5f34368a601_3.png"
+    ];
+
+    const keywordMapping = [
+      { id: '01', keywords: ['resort', 'corridor', 'courtyard', 'Hanok', 'architecture', 'suite', 'ceiling', 'wall', 'nook'] },
+      { id: '02', keywords: ['porcelain', 'Baekja', 'tea_cup', 'tea_set', 'bowl', 'plate', 'Yugi', 'bronzew', 'ceramic'] },
+      { id: '03', keywords: ['timber', 'Soban', 'furniture', 'wood', 'wooden', 'walnut', 'joinery'] },
+      { id: '04', keywords: ['stone', 'granite', 'volcanic', 'monolith', 'rock', 'basin', 'plinth'] },
+      { id: '05', keywords: ['textile', 'Pojagi', 'ramie', 'fabric', 'Mosi'] },
+      { id: '06', keywords: ['Hanji', 'paper'] },
+      { id: '07', keywords: ['model', 'person', 'host', 'fashion', 'hands', 'people', 'human'] },
+      { id: '08', keywords: ['Sunlight', 'water', 'tree', 'nature', 'garden', 'shadow', 'drop'] }
+    ];
+
+    const generateImageData = () => {
+      return imageFiles.map((file, index) => {
+        const lowerName = file.toLowerCase();
+        let catId = '08';
+        for (const mapping of keywordMapping) {
+          if (mapping.keywords.some(kw => lowerName.includes(kw.toLowerCase()))) {
+            catId = mapping.id;
+            break;
+          }
+        }
+        return {
+          id: index.toString(),
+          src: `./IMGS/${file}`,
+          categoryId: catId
+        };
+      });
+    };
+
+    const IMAGES = generateImageData();
+
+    function App() {
+      const [activeFilter, setActiveFilter] = useState('ALL');
+      const [selectedImage, setSelectedImage] = useState(null);
+
+      const filteredImages = activeFilter === 'ALL' 
+        ? IMAGES 
+        : IMAGES.filter(img => img.categoryId === activeFilter);
+
+      return (
+        <div className="container">
+          <header className="header">
+            <motion.h1 
+              className="title sans"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, ease: "easeOut" }}
+            >
+              KOREAN LUXURY
+            </motion.h1>
+            <motion.p 
+              className="subtitle"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 1, delay: 0.3, ease: "easeOut" }}
+            >
+              Korean Luxury is the dignity of time, proven through profound respect and the beauty of silence.
+            </motion.p>
+          </header>
+
+          <motion.nav 
+            className="filter-nav sans"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 1, delay: 0.6 }}
+          >
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.id}
+                className={`filter-btn ${activeFilter === cat.id ? 'active' : ''}`}
+                onClick={() => setActiveFilter(cat.id)}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </motion.nav>
+
+          <motion.div layout className="grid-gallery">
+            <AnimatePresence>
+              {filteredImages.map((img) => (
+                <motion.div
+                  layout
+                  key={img.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.5, ease: "easeInOut" }}
+                  className="image-card"
+                  onClick={() => setSelectedImage(img)}
+                >
+                  <img src={img.src} alt="Korean Luxury" loading="lazy" />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+
+          <AnimatePresence>
+            {selectedImage && (
+              <motion.div
+                className="fullscreen-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                onClick={() => setSelectedImage(null)}
+              >
+                <motion.img
+                  src={selectedImage.src}
+                  alt="Fullscreen"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
